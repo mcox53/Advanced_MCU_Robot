@@ -12,6 +12,22 @@
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 
+# Atmel studio specific files beyond Visual studio template
+*.atsln
+*.atsuo
+*.cproj
+*.eep
+*.elf
+*.hex
+*.lss
+*.map
+*.srec
+*.d
+*.mk
+*.d
+*.o
+*.mk
+
 # Build results
 [Dd]ebug/
 [Dd]ebugPublic/
