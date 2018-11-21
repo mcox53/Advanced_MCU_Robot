@@ -16,26 +16,24 @@
  #include <avr/io.h>
  #include <avr/interrupt.h>
  
- #define TIMER2_OUT_REGA	OCR2A
- #define TIMER2_OUT_REGB	OCR2B
+ #define TIMER0_OUT_REGA	OCR0A
+ #define TIMER0_OUT_REGB	OCR0B
  
  /* Arduino Pins are as follows
-	ENA		Pin 11
-	N1		Pin 10
-	N2		Pin 9
-	N3		Pin 7
-	N4		Pin 6
-	ENB		Pin 3
+	ENA		Pin 5
+	N1		Pin 7
+	N2		Pin 8
+	N3		Pin 9
+	N4		Pin 11
+	ENB		Pin 6
  */
  
- #define ENA	PINB3
- #define N1		PINB2
- #define N2		PINB1
- #define A_PORT	PORTB
- #define N3		PIND7
- #define N4		PIND6
- #define ENB	PIND3
- #define B_PORT	PORTD
+ #define ENA	PIND5
+ #define N1		PIND7
+ #define N2		PINB0
+ #define N3		PINB1
+ #define N4		PINB3
+ #define ENB	PIND6
  
  // Setup and initialize timers
  void pwm_timer_init(void);
@@ -61,4 +59,11 @@
  // Set the duty cycle for Motor B
  void setSpeedB(uint8_t speed);
  
+ // 
+ uint8_t interpret_duty(uint16_t ADC_val);
  
+ uint8_t interpretLR_D(uint16_t ADC_LR);
+ 
+ uint8_t interpretUD_D(uint16_t ADC_UD);
+ 
+ #endif
