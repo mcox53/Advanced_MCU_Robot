@@ -11,6 +11,9 @@
 #include <avr/interrupt.h>
 #include "UART.h"
 #include "ADC.h"
+#include "Motor.h"
+uint16_t ADC_LR;
+uint16_t ADC_UD;
 volatile uint8_t rx[4]; // rx buffer;
 int i = 0;
 ISR(USART_RX_vect) {
@@ -20,6 +23,10 @@ ISR(USART_RX_vect) {
 	if(i > 3){
 		i = 0;
 		USART_Transmit_String(rx);
+		ADC_LR = rx[3];
+		ADC_LR = (ADC_LR>>8) | rx[2];
+		ADC_UD = rx[1];
+		ADC_UD = (ADC_UD>>8) | rx[0];
 	}
 }
 
