@@ -22,7 +22,7 @@ ISR(USART_RX_vect) {
 	}
 	if(i > 3){
 		i = 0;
-		USART_Transmit_String(rx);
+		//USART_Transmit_String(rx); //for testing through ftdi
 		ADC_LR = rx[3];
 		ADC_LR = (ADC_LR>>8) | rx[2];
 		ADC_UD = rx[1];
