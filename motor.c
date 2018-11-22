@@ -10,23 +10,43 @@
  */
  
  #include "motor.h"
+ 
+ 
+ // Motor B -> Right
+ // Motor A -> Left
   
- void pwm_timer_init(void){
-	 
-	DDRD |= (1 << ENA) | (1 << N1) | (1 << ENB);
-	DDRB |= (1 << N2) | (1 << N3) | (1 << N4);
+void pwm_timer_init(void){
+	/*
+	// 	DDRD |= (1 << ENA) | (1 << N1) | (1 << ENB);
+	// 	DDRB |= (1 << N2) | (1 << N3) | (1 << N4);
+	
+	//OCR0A = 0;
+	//OCR0B = 0;
 	
 	// Clear OC0A on Compare Match
-	TCCR0A |= (1 << COM0A1); 
+	TCCR0A |= (1 << COM0A1);
 	// Clear OC0B on Compare Match
 	TCCR0A |= (1 << COM0B1);
 	// Fast PWM mode w/ TOP = 0xFF
 	TCCR0A = (1 << WGM01) | (1 << WGM00);
-	// Set Prescaler to 8
-	TCCR0A |= (1 << CS21);
+	// Set Prescaler to
+	TCCR0B |= (1 << CS01) | (1 << CS00);
 	// Enable Compare Match Interrupts for OC0A and OC0B
 	TIMSK0 |= (1 << OCIE0A) | (1 << OCIE0B);
- }
+	*/
+	
+		DDRD |= (1 << ENA) | (1 << N1) | (1 << ENB);
+		DDRB |= (1 << N2) | (1 << N3) | (1 << N4);
+		
+		OCR0A = 255;
+		OCR0B = 255;
+		
+		TCCR0A |= (1 << COM0A1);
+		TCCR0A |= (1 << COM0B1);
+		TCCR0A |= (1 << WGM01) | (1 << WGM00);
+		TCCR0B |= (1 << CS01) | (1 << CS00);
+		TIMSK0 |= (1 << OCIE0A) | (1 << OCIE0B);
+}
  
  // If N1 is HIGH and N2 is LOW -> Motor A Backwards
  // If N1 is LOW and N2 is HIGH -> Motor A Forwards
@@ -36,15 +56,15 @@
 void moveBackwards(void){
 	PORTD &= ~(1 << N1);
 	PORTB |= (1 << N2);
-	PORTB &= ~(1 << N3);
-	PORTB |= (1 << N4);
+	PORTB |= (1 << N3);
+	PORTB &= ~(1 << N4);
 }
 
 void moveForward(void){
 	PORTD |= (1 << N1);
 	PORTB &= ~(1 << N2);
-	PORTB |= (1 << N3);
-	PORTB &= ~(1 << N4);
+	PORTB &= ~(1 << N3);
+	PORTB |= (1 << N4);
 }
 
 // To move left either disable the left motor completely or cut speed separately
@@ -57,18 +77,8 @@ void moveLeft(void){
 // To move right either disable the right motor completely or cut speed separately
 // This function just properly sets the left motor direction
 void moveRight(void){
-	PORTD &= ~(1 << N1);
-	PORTB |= (1 << N2);
-}
-
-// It is assumed that the provided value is 0-255
-void setSpeedA(uint8_t speed){
-	TIMER0_OUT_REGA = speed;
-}
-
-// It is assumed that the provided value is 0-255
-void setSpeedB(uint8_t speed){
-	TIMER0_OUT_REGB = speed;
+	PORTD |= (1 << N1);
+	PORTB &= ~(1 << N2);
 }
 
 // According to the L298N datasheet if the directional inputs are the same
