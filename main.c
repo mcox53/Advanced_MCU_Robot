@@ -20,25 +20,29 @@ uint16_t ADC_UD;
 uint8_t L_speed;
 uint8_t R_speed;
 uint8_t ADC_R;
-uint8_t duty;
+uint8_t duty = 50;
 volatile uint8_t rx[4]; // rx buffer;
 int i = 0;
+char conv_buff[10]; //buffer for itoa converstions
 
 ISR(USART_RX_vect) {
-	while ( !(UCSR0A & (1<<RXC0)) );
-	rx[i++] = UDR0;
 	
+	while (!(UCSR0A & (1<<RXC0)));
+	rx[i++] = UDR0;
 	if(i > 3){
-		i = 0;
-		//USART_Transmit_String(rx); //for testing through ftdi
-		ADC_LR = ADC_LR | rx[2];
-		ADC_LR = (ADC_LR<<8) | rx[3];
-		ADC_UD = ADC_UD | rx[0];
-		ADC_UD = (ADC_UD<<8) | rx[1];
-		//USART_Transmit(rx[0]);
-		//USART_Transmit(rx[1]);
-		//USART_Transmit(rx[2]);
-		//USART_Transmit(rx[3]);
+		i = 0;		
+		ADC_UD = rx[0];
+		ADC_UD = (ADC_UD << 8) | rx[1];
+		ADC_LR = rx[2];
+		ADC_LR = (ADC_LR << 8) | rx[3];
+// 		itoa(ADC_UD,conv_buff,10);
+// 		USART_Transmit_String(conv_buff);
+// 		USART_Transmit(':');
+// 		itoa(ADC_LR,conv_buff,10);
+// 		USART_Transmit_String(conv_buff);
+// 		USART_Transmit('\r');
+// 		USART_Transmit('\n');
+
 	}
 }
 
@@ -56,41 +60,35 @@ int main(void){
 	ADC_init();
 	pwm_timer_init();
 	sei();
+	
 	//OCR0A = 0;
 	//OCR0B = 0;
 
-	OCR0A = 128;
-	OCR0B = 128;
+	OCR0A = 180;
+	OCR0B = 180;
 	moveForward();
 
 	while(1){
 		
-		USART_Transmit(rx[0]);
-		USART_Transmit(rx[1]);
-		USART_Transmit(rx[2]);
-		USART_Transmit(rx[3]);
-		//setSpeedA(125);
-		//setSpeedB(125);
-					
-		if(ADC_UD > 512){
-			ADC_R = (ADC_UD - 512) / 2;
-		}else if(ADC_UD < 512){
-			ADC_R = (512 - ADC_UD) / 2;
-		}
-	
-		duty = ADC_R;
-		
-		//duty = interpret_duty(ADC_UD);
-		uint8_t dir = interpretUD_D(ADC_UD);
-		
-		//setSpeedA(duty);
-		//setSpeedB(duty);
-		
-		if (dir == 0){
-			moveForward();
-		}else{
-			moveBackwards();
-		}
+// 		if(ADC_UD > 512){
+// 			ADC_R = (ADC_UD - 512) / 2;
+// 		}else if(ADC_UD < 512){
+// 			ADC_R = (512 - ADC_UD) / 2;
+// 		}
+// 	
+// 		duty = ADC_R;
+// 		
+// 		//duty = interpret_duty(ADC_UD);
+// 		uint8_t dir = interpretUD_D(ADC_UD);
+// 		
+// 		//setSpeedA(duty);
+// 		//setSpeedB(duty);
+// 		
+// 		if (dir == 0){
+// 			moveForward();
+// 		}else{
+// 			moveBackwards();
+// 		}
 		
 		
 	}
