@@ -12,6 +12,7 @@
 #include "UART.h"
 #include "ADC.h"
 #include "motor.h"
+#include "HCSR04.h"
 #include <util/delay.h>
 
 
@@ -54,10 +55,34 @@ ISR(TIMER0_COMPB_vect){
 	OCR0B = duty;
 }
 
+int distance; // distance to a wall
+int collision_flag = 0; 
+ISR(PCINT1_vect){
+	cli();
+	if(SR04_ECHO_Check()){
+		usec = 0;
+	}
+	else{
+		distance = (double) usec / (22.83); // 2 means a wall is close, maybe even 3
+		printf("dist = %d \n",distance);
+		if(distance < 3){
+			collision_flag = 1;
+		}
+		else{
+			collision_flag = 0;
+		}
+	}
+	sei();
+}
+
+ISR(TIMER1_COMPA_vect){
+	usec++; 
+}
 
 int main(void){
 	uart_init(); // Initialize UART
 	ADC_init();
+	SR04_init(); // includes init for timer1
 	pwm_timer_init();
 	sei();
 	
