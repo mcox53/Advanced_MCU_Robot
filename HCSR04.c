@@ -22,6 +22,22 @@ void SR04_init(){
 
 	//Servo init
 	DDRD |= (1 << SERVO); //set servo as input
+	
+	//ISR inits
+	//timer1 US sensor
+	TCCR1B |= (1 << CS11) | (1 << CS10) | (1 << WGM12);
+	//TCCR1A |= (1 << WGM12); //CTC
+	//TCCR1B |= ( 1<< CS11) | (1 << CS10); // prescaler 64
+	TIMSK1 |= (1 << OCIE1A); // interrupts globally enabled
+	OCR1A = 5;
+
+	//timer2 for servo (fast PWM)
+	TCCR2A |= (1 << WGM21) | (1 << WGM20) | (1 << COM2B1) | (1 << COM2B0);
+	TCCR2B |= (1 << WGM22) | (1 << CS22) | (1 << CS21) | (1 << CS20);
+	OCR2A = 255;
+	sei();
+	
+	SR04_SERVO_Adjust(30);
  }
 
  //10 us pulse
