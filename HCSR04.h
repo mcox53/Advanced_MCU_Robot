@@ -9,14 +9,12 @@
   #define ECHO PORTC4
   #define SERVO PORTD3
 
- // Initialize //
+
+ // Initialize
  void SR04_init();
 
- // Pulse Sensor //
+ // Pulse Sensor
  void SR04_pulse();
-
- // Check ECHO Pin for return signal
- int SR04_ECHO_Check();
  
- // Move Servo //
+ // Move Servo
  void SR04_SERVO_Adjust(double angle);
