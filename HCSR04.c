@@ -5,11 +5,14 @@
  *  Author: Administrator
  */ 
 
+ #define F_CPU 16000000UL
+
  #include "HCSR04.h"
  #include <stdint.h>
  #include <stdio.h>
  #include <util/delay.h>
  #include <avr/io.h>
+ #include <avr/interrupt.h>
 
 
 void SR04_init(){
@@ -24,12 +27,13 @@ void SR04_init(){
 	DDRD |= (1 << SERVO); //set servo as input
 	
 	//ISR inits
-	//timer1 US sensor
-	TCCR1B |= (1 << CS11) | (1 << CS10) | (1 << WGM12);
-	//TCCR1A |= (1 << WGM12); //CTC
-	//TCCR1B |= ( 1<< CS11) | (1 << CS10); // prescaler 64
-	TIMSK1 |= (1 << OCIE1A); // interrupts globally enabled
-	OCR1A = 5;
+	//timer1  200 microseconds timer. 
+	// Ftimer = 4 Khz corresponds to 200 us period
+	// Prescaler = 1
+	TCCR1A |= (1 << WGM12); //CTC
+	TCCR1B |= (1 << CS10); // prescaler 1
+	TIMSK1 |= (1 << OCIE1A); // Timer 1 output compare match interrupt A
+	OCR1A = 1999;
 
 	//timer2 for servo (fast PWM)
 	TCCR2A |= (1 << WGM21) | (1 << WGM20) | (1 << COM2B1) | (1 << COM2B0);
@@ -42,18 +46,20 @@ void SR04_init(){
 
  //10 us pulse
 void SR04_pulse(){
+	cli();
 	PORTC |= (1 << TRIG); //set trig
 	_delay_us(10); // for 10 us
 	PORTC &= ~(1 << TRIG); //unset trig
+	sei();
  }
 
  //check echo
- Boolean SR04_ECHO_Check(){
+ int SR04_ECHO_Check(){
  	if(PINC & (1 << ECHO)){
- 		return true;
+ 		return 1;
  	}
  	else{
- 		return false;
+ 		return 0;
  	}
  }
 

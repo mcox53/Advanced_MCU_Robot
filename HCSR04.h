@@ -16,7 +16,7 @@
  void SR04_pulse();
 
  // Check ECHO Pin for return signal
- Boolean SR04_ECHO_Check();
+ int SR04_ECHO_Check();
  
  // Move Servo //
  void SR04_SERVO_Adjust(double angle);
