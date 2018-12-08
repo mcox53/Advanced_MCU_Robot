@@ -91,8 +91,8 @@ void stopMotors(void){
 	PORTB |= (1 << N2);
 	PORTB |= (1 << N3);
 	PORTB |= (1 << N4);
-	setSpeedA(0);
-	setSpeedB(0);
+// 	setSpeedA(0);
+// 	setSpeedB(0);
 }
 
 uint8_t interpret_duty(uint16_t ADC_val){
@@ -111,7 +111,7 @@ uint8_t interpretLR_D(uint16_t ADC_LR){
 	// 1 if Left , 0 if Right
 	uint8_t dir_flag;
 	
-	if(ADC_LR > 512){
+	if(ADC_LR > 594){
 		dir_flag = 0;
 	}else{
 		dir_flag = 1;
@@ -123,7 +123,7 @@ uint8_t interpretUD_D(uint16_t ADC_UD){
 	// 1 if backwards, 0 if forwards
 	uint8_t dir_flag;
 	
-	if(ADC_UD > 512){
+	if(ADC_UD > 594){
 		dir_flag = 0;
 	}else{
 		dir_flag = 1;

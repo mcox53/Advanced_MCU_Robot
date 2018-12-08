@@ -15,7 +15,7 @@
 #include "HCSR04.h"
 #include <util/delay.h>
 
-
+uint8_t UD; // up down mag
 uint16_t ADC_LR;
 uint16_t ADC_UD;
 double L_speed = 0;
@@ -23,14 +23,23 @@ double R_speed = 0;
 double power = 0;
 double L_speed_mag = 0;
 double R_speed_mag = 0;
-double ADC_R;
-double ADC_L;
+double UD_MAG = 512;
+double LR_MAG = 512;
 volatile uint8_t rx[4]; // rx buffer;
 int i = 0;
 char conv_buff[10]; //buffer for itoa converstions
-int servo_angle = 30; //initial
-int counter = 0; //for servo
-uint8_t msec; //for us sensor
+
+// Initial Servo Angle
+int servo_angle = 30;
+
+// Counters for Timer1
+volatile uint16_t counter = 0;
+volatile uint8_t time_counter = 0;
+volatile uint16_t servo_counter = 0;
+
+// Distance Calculations
+uint8_t distance;
+uint8_t collision_flag = 0;
 
 ISR(USART_RX_vect) {
 	
@@ -55,50 +64,56 @@ ISR(USART_RX_vect) {
 
 
 ISR(TIMER0_COMPA_vect){
-	OCR0A = L_speed_mag;
+	OCR0A = L_speed_mag; // speed of right wheels
 }
 
 ISR(TIMER0_COMPB_vect){
-	OCR0B = R_speed_mag;
+	OCR0B = R_speed_mag; // speed of left wheels
 }
 
-int distance; // distance to a wall
-int collision_flag = 0;
 ISR(PCINT1_vect){
 	cli();
-	if(SR04_ECHO_Check()){
-		msec = 0;
+	if(PINC & (1 << ECHO)){
+		time_counter = 0;
 	}
 	else{
-		distance = msec; // 2 means a wall is close, maybe even 3
-		printf("dist = %d \n",distance);
-		if(distance < 5){
+		distance = time_counter;
+		if(distance < 7){
 			collision_flag = 1;
 		}
 		else{
 			collision_flag = 0;
 		}
 	}
+
+	if(collision_flag == 0){
+		PORTB &= ~(1 << PINB4);
+		}else{
+		PORTB |= (1 << PINB4);
+	}
 	sei();
+	
 }
+
 
 ISR(TIMER1_COMPA_vect){
-	msec++; // resets every 20ms
-	counter++; //resets every 1 ms
+	counter++;
+	time_counter++;
+	servo_counter++;
 }
-
 int main(void){
 	uart_init(); // Initialize UART
 	ADC_init();
 	SR04_init();
-	pwm_timer_init();
+	//pwm_timer_init();
 	sei();
 	
+	// PINB4 has an LED on the board which can be used for debugging signals
+	DDRB |= (1 << DDB4);
+
 	//OCR0A = 0;
 	//OCR0B = 0;
 
-	OCR0A = 150;
-	OCR0B = 150;
 	DDRD |= (1 << DDD6) | (1 << DDD7);
 	DDRD |= 0xFF;
 	DDRB |= 0xFF;
@@ -111,55 +126,82 @@ int main(void){
 	TCCR0A |= (1 << WGM01) | (1 << WGM00);
 	TCCR0B |= (1 << CS01) | (1 << CS00);
 	TIMSK0 |= (1 << OCIE0A) | (1 << OCIE0B);
-	moveForward();
-	PORTD &= ~(1 << N1);
-	PORTB |= (1 << N2);
-	
-	// Right motor
-	PORTB |= (1 << N3);
-	PORTB &= ~(1 << N4);
+
+	// Reset bluetooth buffers
+	ADC_UD = 0;
+	ADC_LR = 0;
+	//moveForward();
+	//moveBackwards();
 
 while(1){	
-			if(ADC_UD > 512){
-				ADC_R = (ADC_UD - 512) / 2;
-			}else if(ADC_UD < 512){
-				ADC_R = (512 - ADC_UD) / 2;
+			// ADC_UD Stationary: 593/594    UP: 1016/1017  DOWN: 178/180 
+			// ADC_LR Stationary: 593/594    LEFT: 177/178  RIGHT: 1022/1023 
+			if(ADC_UD > 514){//604){ // Joystick is up
+				UD_MAG = (ADC_UD - 512) / 2;
+			}else if(ADC_UD < 494){ //584){ // Joystick is down ? right?
+				UD_MAG = (494 - ADC_UD) / 2;
+// 				if(UD_MAG == 255){
+// 					UD_MAG = 255;
+// 				}
+			}else{ // Dead Zone
+				UD_MAG = 0;
 			}
 
-			power = (ADC_R / 255);
 
-			if(ADC_LR > 532){
-				ADC_L = (ADC_LR - 512) / 2;
-				L_speed = 255;
-				R_speed = 255 - ADC_L;
-			}else if(ADC_LR < 492){
-				ADC_L = (512 - ADC_LR) / 2;
-				R_speed = 255;
-				L_speed = 255 - ADC_L;
+			if(UD_MAG == 0){
+				L_speed_mag = 0;
+				R_speed_mag = 0;
+			}else if(ADC_LR > 514){			// Right turn
+				LR_MAG = (ADC_LR - 512) / 2;
+				R_speed_mag = UD_MAG;
+				L_speed_mag = 255 - LR_MAG;
+			}else if(ADC_LR < 494){		// Left turn
+				LR_MAG = (494 - ADC_LR) / 2;
+// 				if(LR_MAG == 255){
+// 					LR_MAG = 255;
+// 				}
+				L_speed_mag = UD_MAG;
+				R_speed_mag = 255 - LR_MAG;
+			}else{
+				R_speed_mag = UD_MAG;
+				L_speed_mag = UD_MAG;
 			}
 
-			if(power < 0.05){
-				power = .5;
-			}
 
-			L_speed_mag = round(power * L_speed);
-			R_speed_mag = round(power * R_speed);
+
+
+  			//L_speed_mag = UD_MAG; 
+ 			//R_speed_mag = UD_MAG; 
+
+// 			L_speed_mag = round(power * L_speed);
+// 			R_speed_mag = round(power * R_speed);
 
 		//duty = interpret_duty(ADC_UD);
-		uint8_t UD = interpretUD_D(ADC_UD);
+
+		UD = interpretUD_D(ADC_UD);
 
 		//setSpeedA(duty);
 		//setSpeedB(duty);
-		if(counter == 5){
-			if(servo_angle == 150){
+
+		if(counter >= 300){
+			SR04_pulse();
+			counter = 0;
+		}
+
+		if(servo_counter >= 100){
+			if(servo_angle >= 150){
 				servo_angle = 30;
 			}
 			servo_angle ++;
 			SR04_SERVO_Adjust(servo_angle);
-			//_delay_ms(20);
-			//printf("%d \n",usec);
-			SR04_pulse();
-			counter = 0;
+			servo_counter = 0;
+		}
+			
+		if(collision_flag == 1){
+			L_speed_mag = 200;
+			R_speed_mag = 200;
+			moveBackwards();
+			_delay_ms(500);
 		}
 
 		if (UD == 0){
@@ -167,9 +209,7 @@ while(1){
 		}else{
 			moveBackwards();
 		}
-
-	
-	}
+ 	}
 		
 		
 }
