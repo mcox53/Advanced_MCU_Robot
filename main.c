@@ -1,10 +1,10 @@
 /*
- * atmega328p BT33 Bluetooth Modules.c
+ * main.c
  *
  * Created: 11/15/2018 4:02:05 PM
- * Author : Alex Valdes
+ * Author :
  */ 
- //6 & 5 duty cycle
+ 
 #define F_CPU 16000000UL
 #include <avr/io.h>
 #include <util/delay.h>
@@ -15,19 +15,19 @@
 #include "HCSR04.h"
 #include <util/delay.h>
 
-uint8_t UD; // up down mag
+// Variables for speed
+uint8_t UD;
 uint16_t ADC_LR;
 uint16_t ADC_UD;
-double L_speed = 0;
-double R_speed = 0;
-double power = 0;
-double L_speed_mag = 0;
-double R_speed_mag = 0;
-double UD_MAG = 512;
-double LR_MAG = 512;
+
+uint8_t L_speed_mag;
+uint8_t R_speed_mag;
+uint16_t UD_MAG;
+uint16_t LR_MAG;
+
+// UART variables
 volatile uint8_t rx[4]; // rx buffer;
 int i = 0;
-char conv_buff[10]; //buffer for itoa converstions
 
 // Initial Servo Angle
 int servo_angle = 30;
@@ -41,6 +41,14 @@ volatile uint16_t servo_counter = 0;
 uint8_t distance;
 uint8_t collision_flag = 0;
 
+
+// When a RX interrupt occurs, read the values and increment the buffer to read all 4 values
+// Message format:
+// Byte 1: Joystick Up/Down movement high byte
+// Byte 2: Joystick Up/Down movement low byte
+// Byte 3: Joystick Left/Right movement high byte
+// Byte 4: Joystick Left/Right movement low byte
+
 ISR(USART_RX_vect) {
 	
 	//while (!(UCSR0A & (1<<RXC0)));
@@ -51,33 +59,33 @@ ISR(USART_RX_vect) {
 		ADC_UD = (ADC_UD << 8) | rx[1];
 		ADC_LR = rx[2];
 		ADC_LR = (ADC_LR << 8) | rx[3];
-// 		itoa(ADC_UD,conv_buff,10);
-// 		USART_Transmit_String(conv_buff);
-// 		USART_Transmit(':');
-// 		itoa(ADC_LR,conv_buff,10);
-// 		USART_Transmit_String(conv_buff);
-// 		USART_Transmit('\r');
-// 		USART_Transmit('\n');
-
 	}
 }
 
 
 ISR(TIMER0_COMPA_vect){
-	OCR0A = L_speed_mag; // speed of right wheels
+	OCR0A = L_speed_mag; // speed of left wheels
 }
 
 ISR(TIMER0_COMPB_vect){
-	OCR0B = R_speed_mag; // speed of left wheels
+	OCR0B = R_speed_mag; // speed of right wheels
 }
 
 ISR(PCINT1_vect){
 	cli();
+	
+	// Reset the time counter when the rising edge of the echo is received
+	// Otherwise the interrupt is triggered by a falling edge of the ECHO signal
+	// In this instance the number of timer periods that have elapsed is recorded
+	// This number is compared to our threshold which is approximately 6 inches away
+	 
 	if(PINC & (1 << ECHO)){
 		time_counter = 0;
 	}
 	else{
+		
 		distance = time_counter;
+		
 		if(distance < 7){
 			collision_flag = 1;
 		}
@@ -86,9 +94,11 @@ ISR(PCINT1_vect){
 		}
 	}
 
+
+	// Illuminate the on board LED if the object is within 6 inches (For testing)
 	if(collision_flag == 0){
 		PORTB &= ~(1 << PINB4);
-		}else{
+	}else{
 		PORTB |= (1 << PINB4);
 	}
 	sei();
@@ -97,97 +107,48 @@ ISR(PCINT1_vect){
 
 
 ISR(TIMER1_COMPA_vect){
+	// Increment various software counters
 	counter++;
 	time_counter++;
 	servo_counter++;
 }
 int main(void){
-	uart_init(); // Initialize UART
+
+	// Initialize UART, ADC, SR04 Pins and the timers for the motor
+	uart_init();
 	ADC_init();
 	SR04_init();
-	//pwm_timer_init();
+	pwm_timer_init();
 	sei();
 	
 	// PINB4 has an LED on the board which can be used for debugging signals
 	DDRB |= (1 << DDB4);
 
-	//OCR0A = 0;
-	//OCR0B = 0;
-
-	DDRD |= (1 << DDD6) | (1 << DDD7);
-	DDRD |= 0xFF;
-	DDRB |= 0xFF;
-
-	OCR0A = 150;
-	OCR0B = 150;
-
-	TCCR0A |= (1 << COM0A1);
-	TCCR0A |= (1 << COM0B1);
-	TCCR0A |= (1 << WGM01) | (1 << WGM00);
-	TCCR0B |= (1 << CS01) | (1 << CS00);
-	TIMSK0 |= (1 << OCIE0A) | (1 << OCIE0B);
-
-	// Reset bluetooth buffers
+	// initialize ADV values to 0;
 	ADC_UD = 0;
 	ADC_LR = 0;
-	//moveForward();
-	//moveBackwards();
 
 while(1){	
-			// ADC_UD Stationary: 593/594    UP: 1016/1017  DOWN: 178/180 
-			// ADC_LR Stationary: 593/594    LEFT: 177/178  RIGHT: 1022/1023 
-			if(ADC_UD > 514){//604){ // Joystick is up
-				UD_MAG = (ADC_UD - 512) / 2;
-			}else if(ADC_UD < 494){ //584){ // Joystick is down ? right?
-				UD_MAG = (494 - ADC_UD) / 2;
-// 				if(UD_MAG == 255){
-// 					UD_MAG = 255;
-// 				}
-			}else{ // Dead Zone
-				UD_MAG = 0;
-			}
-
-
-			if(UD_MAG == 0){
-				L_speed_mag = 0;
-				R_speed_mag = 0;
-			}else if(ADC_LR > 514){			// Right turn
-				LR_MAG = (ADC_LR - 512) / 2;
-				R_speed_mag = UD_MAG;
-				L_speed_mag = 255 - LR_MAG;
-			}else if(ADC_LR < 494){		// Left turn
-				LR_MAG = (494 - ADC_LR) / 2;
-// 				if(LR_MAG == 255){
-// 					LR_MAG = 255;
-// 				}
-				L_speed_mag = UD_MAG;
-				R_speed_mag = 255 - LR_MAG;
-			}else{
-				R_speed_mag = UD_MAG;
-				L_speed_mag = UD_MAG;
-			}
-
-
-
-
-  			//L_speed_mag = UD_MAG; 
- 			//R_speed_mag = UD_MAG; 
-
-// 			L_speed_mag = round(power * L_speed);
-// 			R_speed_mag = round(power * R_speed);
-
-		//duty = interpret_duty(ADC_UD);
-
+		
+		// Read speed and direction from ADC joysticks, move appropriate direction
+		interpret_speed();
+		interpret_dir();
 		UD = interpretUD_D(ADC_UD);
 
-		//setSpeedA(duty);
-		//setSpeedB(duty);
+		if (UD == 0){
+			moveForward();
+		}else{
+			moveBackwards();
+		}
 
+
+		// Send out a pulse on the ultrasonic sensor ever 60 ms
 		if(counter >= 300){
 			SR04_pulse();
 			counter = 0;
 		}
 
+		// Move the serve every 20ms and reset if the angle is too high
 		if(servo_counter >= 100){
 			if(servo_angle >= 150){
 				servo_angle = 30;
@@ -196,7 +157,9 @@ while(1){
 			SR04_SERVO_Adjust(servo_angle);
 			servo_counter = 0;
 		}
-			
+		
+
+		// If something gets too close to the ultrasonic sensor, move backwards for 500 ms
 		if(collision_flag == 1){
 			L_speed_mag = 200;
 			R_speed_mag = 200;
@@ -204,23 +167,6 @@ while(1){
 			_delay_ms(500);
 		}
 
-		if (UD == 0){
-			moveForward();
-		}else{
-			moveBackwards();
-		}
  	}
 		
-		
 }
-
-
-
-/*
-
-uint8_t speed = 125;
-
-int main(void){
-	
-}
-*/

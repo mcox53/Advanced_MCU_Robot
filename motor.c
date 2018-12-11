@@ -16,36 +16,19 @@
  // Motor A -> Left
   
 void pwm_timer_init(void){
-	/*
-	// 	DDRD |= (1 << ENA) | (1 << N1) | (1 << ENB);
-	// 	DDRB |= (1 << N2) | (1 << N3) | (1 << N4);
 	
-	//OCR0A = 0;
-	//OCR0B = 0;
+	DDRD |= (1 << DDD6) | (1 << DDD7);
+	DDRD |= 0xFF;
+	DDRB |= 0xFF;
 	
-	// Clear OC0A on Compare Match
+	OCR0A = 150;
+	OCR0B = 150;
+	
 	TCCR0A |= (1 << COM0A1);
-	// Clear OC0B on Compare Match
 	TCCR0A |= (1 << COM0B1);
-	// Fast PWM mode w/ TOP = 0xFF
-	TCCR0A = (1 << WGM01) | (1 << WGM00);
-	// Set Prescaler to
+	TCCR0A |= (1 << WGM01) | (1 << WGM00);
 	TCCR0B |= (1 << CS01) | (1 << CS00);
-	// Enable Compare Match Interrupts for OC0A and OC0B
 	TIMSK0 |= (1 << OCIE0A) | (1 << OCIE0B);
-	*/
-	
-		DDRD |= (1 << ENA) | (1 << N1) | (1 << ENB);
-		DDRB |= (1 << N2) | (1 << N3) | (1 << N4);
-		
-		OCR0A = 255;
-		OCR0B = 255;
-		
-		TCCR0A |= (1 << COM0A1);
-		TCCR0A |= (1 << COM0B1);
-		TCCR0A |= (1 << WGM01) | (1 << WGM00);
-		TCCR0B |= (1 << CS01) | (1 << CS00);
-		TIMSK0 |= (1 << OCIE0A) | (1 << OCIE0B);
 }
  
  // If N1 is HIGH and N2 is LOW -> Motor A Backwards
@@ -95,32 +78,52 @@ void stopMotors(void){
 // 	setSpeedB(0);
 }
 
-uint8_t interpret_duty(uint16_t ADC_val){
-	
-	uint8_t ADC_R;
-	
-	if(ADC_R > 512){
-		ADC_R = (ADC_val - 512) / 2;
-	}else if(ADC_R < 512){
-		ADC_R = (512 - ADC_val) / 2;
-	}
-	return ADC_R;
+void interpret_speed(void){
+
+	// ADC_UD Stationary: 593/594    UP: 1016/1017  DOWN: 178/180
+	// ADC_LR Stationary: 593/594    LEFT: 177/178  RIGHT: 1022/1023
+
+	// Interpret speed based on up/down joystick position
+	// Stationary positions for joystick were not 512 so deadzone is taken into account
+
+	if(ADC_UD > 514){
+		UD_MAG = (ADC_UD - 512) / 2;
+	}else if(ADC_UD < 494){
+		UD_MAG = (494 - ADC_UD) / 2;
+	}else{
+		UD_MAG = 0;
+	}	
+
+
 }
 
-uint8_t interpretLR_D(uint16_t ADC_LR){
-	// 1 if Left , 0 if Right
-	uint8_t dir_flag;
-	
-	if(ADC_LR > 594){
-		dir_flag = 0;
+
+void interpret_dir(void){
+
+	// Move left and right based on the joystick values and the up/down magnitude
+	// Simple tank drive system.
+
+	if(UD_MAG == 0){
+		L_speed_mag = 0;
+		R_speed_mag = 0;
+	}else if(ADC_LR > 514){			
+		LR_MAG = (ADC_LR - 512) / 2;
+		R_speed_mag = UD_MAG;
+		L_speed_mag = 255 - LR_MAG;
+	}else if(ADC_LR < 494){		
+		LR_MAG = (494 - ADC_LR) / 2;
+		L_speed_mag = UD_MAG;
+		R_speed_mag = 255 - LR_MAG;
 	}else{
-		dir_flag = 1;
+		R_speed_mag = UD_MAG;
+		L_speed_mag = UD_MAG;
 	}
-	return dir_flag;
+
 }
 
 uint8_t interpretUD_D(uint16_t ADC_UD){
 	// 1 if backwards, 0 if forwards
+	
 	uint8_t dir_flag;
 	
 	if(ADC_UD > 594){

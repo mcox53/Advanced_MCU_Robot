@@ -59,11 +59,13 @@
  // Set the duty cycle for Motor B
  void setSpeedB(uint8_t speed);
  
- // 
- uint8_t interpret_duty(uint16_t ADC_val);
+ // Interpret a value of speed based on the position of the joystick
+ void interpret_speed(uint16_t ADC_val);
  
- uint8_t interpretLR_D(uint16_t ADC_LR);
- 
+ // Figure out if moving forward or backwards
  uint8_t interpretUD_D(uint16_t ADC_UD);
+
+ // Use Joystick data to turn robot left or right
+ void interpret_dir(void);
  
  #endif
