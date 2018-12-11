@@ -1,4 +1,3 @@
-# Advanced_MCU_Robot
+# MCU Robot
 
-
-This is the repository for our final project in the Advanced MCU course.
+If you have any questions about the code please contact me.
